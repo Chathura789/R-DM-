@@ -1,0 +1,121 @@
+
+```{r}
+library(curl)
+library(dplyr)
+library(readr)
+```
+
+
+
+
+
+```{r}
+#Datasets
+
+#data manipulation with dplyr 
+
+babynames <- read_rds("https://www.dropbox.com/s/oapk7331i8jpobr/babynames.rds?dl=1")
+counties <- read_rds("https://www.dropbox.com/s/vv3o6a19uzq8vki/counties.rds?dl=1")
+
+
+#joining data with dplyr 
+
+sets <- read_rds("https://www.dropbox.com/s/m1fd369we469yb9/sets.rds?dl=1")
+themes <- read_rds("https://www.dropbox.com/s/ictdfdnvxfn3v6c/themes.rds?dl=1")
+parts <- read_rds("https://www.dropbox.com/s/k9hd8zixrjpmg1l/parts.rds?dl=1")
+part_categories  <- read_rds("https://www.dropbox.com/s/5s3xiqznun6rzvx/part_categories.rds?dl=1")
+inventories <- read_rds("https://www.dropbox.com/s/nxd707da54wnez2/inventories.rds?dl=1")
+inventory_parts <- read_rds("https://www.dropbox.com/s/3fqsqmajb0g1nzl/inventory_parts.rds?dl=1")
+colours <- read_rds("https://www.dropbox.com/s/o4k6wg27idpqkq5/colors.rds?dl=1")
+questions <- read_rds("https://www.dropbox.com/s/eamkq4zjnw482s0/questions.rds?dl=1")
+tags <- read_rds("https://www.dropbox.com/s/zbl6n8u3egvquq1/tags.rds?dl=1")
+question_tags <- read_rds("https://www.dropbox.com/s/zomtknghpcalqbq/question_tags.rds?dl=1")
+answers <- read_rds("https://www.dropbox.com/s/niyyl2wnm3qd6yi/answers.rds?dl=1")
+
+
+
+#programing with r 
+ nass.barley <- read_rds("https://www.dropbox.com/s/tboy29t3t112gv8/nass.barley.rds?dl=1")
+ nass.corn <- read_rds("https://www.dropbox.com/s/n6ht2fqkips1slh/nass.corn.rds?dl=1")
+ nass.wheat <- read_rds("https://www.dropbox.com/s/7tyehwc8g4wjuu9/nass.wheat.rds?dl=1")
+ river <- read_rds("https://www.dropbox.com/s/yf7n7t0bges6zd5/snake_river_visits.rds?dl=1")
+ std <- read_rds("https://www.dropbox.com/s/ei8bm0suz9b4qw3/std_and_poor500_with_pe_2019-06-21.rds?dl=1")
+
+
+
+#programming with dplyr 
+
+imf_data<- read_rds("https://www.dropbox.com/s/j50s3ancaaal1rr/imf_data.rds?dl=1") 
+world_bank_data <- read_rds("https://www.dropbox.com/s/qj3gifeoickihcl/world_bank_data.rds?dl=1")
+
+
+```
+
+
+```{r}
+count_OR <- counties %>%
+  # Select the five columns 
+  select(state, county, population, men, women) %>%
+  # Add the proportion_men variable
+  mutate(proportion_men = men / population) %>%
+  # Filter for population of at least 10,000
+  filter(population >= 10000 | (county == "Forest" & men >= 20000)) %>% # comma for and 
+  # Arrange proportion of men in descending order 
+  arrange(desc(proportion_men))
+
+```
+
+
+```{r}
+dim(count_OR)
+```
+
+
+
+```{r}
+count_AND <- counties %>%
+  # Select the five columns 
+  select(state, county, population, men, women) %>%
+  # Add the proportion_men variable
+  mutate(proportion_men = men / population) %>%
+  # Filter for population of at least 10,000
+  filter(population >= 10000 &  men >= 2000) %>% # comma for and 
+  # Arrange proportion of men in descending order 
+  arrange(desc(proportion_men))
+
+
+count_AND01 <- counties %>%
+  # Select the five columns 
+  select(state, county, population, men, women) %>%
+  # Add the proportion_men variable
+  mutate(proportion_men = men / population) %>%
+  # Filter for population of at least 10,000
+  filter(population >= 10000 &  men >= 2000) %>% # comma for and 
+  # Arrange proportion of men in descending order 
+  arrange(desc(proportion_men))
+
+```
+```{r}
+dim(count_AND)
+dim(count_AND01)
+```
+```{r}
+
+#another example with dates 
+#filter(wq4, Site != "N1" | !between(Date, as.Date("2019-04-17"), as.Date("2019-04-19")))
+```
+
+
+```{r}
+#Counting the number of rows 
+ counties %>% count()
+```
+
+```{r}
+#Counting the number of rows by state in decending 
+ counties %>% count(state) %>% arrange(desc(n))
+```
+
+
+
+

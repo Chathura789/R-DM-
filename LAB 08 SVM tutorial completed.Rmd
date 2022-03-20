@@ -1,0 +1,397 @@
+---
+title: "SVM TUTORIAL"
+author: "Chathura Perera"
+date: '2022-03-17'
+output: html_document
+---
+
+```{r warning=FALSE}
+library(ggplot2)
+library(caret)
+library(e1071)
+library(kernlab)
+library(mlbench)
+```
+```{r}
+## create some sample datasets
+## function to generate random data
+makeData1 = function(n = 100, split = 2, seed = 1){
+ set.seed(seed)
+ df = data.frame(x1 = rnorm(n), x2 = rnorm(n))
+ df$y = as.factor(rep(c(-1,1),c(n/2,n/2))) # assigns classes
+ df$x1[df$y==1] = df$x1[df$y==1] + split
+ df$x2[df$y==1] = df$x2[df$y==1] + split
+ df
+}
+makeData2 = function(n = 100, seed = 11){
+ set.seed(seed)
+ df = data.frame(x1 = rnorm(n), x2 = rnorm(n))
+ df$y = as.factor(2*(sqrt(df$x1^2+df$x2^2) > 1) - 1) # assigns classes
+ df$x1 = df$x1-rnorm(n,0,0.2)
+ df
+}
+makeData3 = function(n = 100, seed = 11){
+ set.seed(seed)
+ df = data.frame(x1 = runif(n,-1,1), x2 = runif(n,-1,1))
+ #df = data.frame(x1 = rnorm(n), x2 = rnorm(n))
+ df$y = as.factor(2*(sin(5*df$x1)+3*sin(df$x2) < 0)-1) # assigns classes
+ df
+}
+```
+
+```{r}
+data1 = makeData1(n = 100, split = 2)
+ggplot(data = data1, aes(x = x1, y = x2, color = y)) + geom_point()
+data2 = makeData2(n = 100)
+ggplot(data = data2, aes(x = x1, y = x2, color = y)) + geom_point()
+data3 = makeData3(n = 100)
+ggplot(data = data3, aes(x = x1, y = x2, color = y)) + geom_point()
+
+```
+### function to plot SVM support vectors and feature space classification
+
+```{r}
+plotSVM = function(svmfit, data, n=100){
+ df = data.frame(x1 = data[,1], x2 = data[,2],
+ y = data[,3], yp = fitted(svmfit) # predict(svmfit, data)
+ )
+ df$correct = df$y==df$yp
+ is_kernlab = class(svmfit)[1] == "ksvm"
+ if(is_kernlab){
+ svRows = unlist(alphaindex(svmfit))
+ sv = data.frame(x1 = df[svRows,1], x2 = df[svRows,2])
+ } else {
+ svRows = c(as.integer(rownames(svmfit$SV)))
+ sv = data.frame(x1 = df[svRows,1], x2 = df[svRows,2])
+ }
+ # makes a grid for shading feature space split by hyperplane
+ x1 = seq(from=min(df$x1), to=max(df$x1), length = n)
+ x2 = seq(from=min(df$x2), to=max(df$x2), length = n)
+ xgrid = expand.grid(x1=x1,x2=x2)
+ grid = data.frame(x1=xgrid$x1,x2=xgrid$x2, y=predict(svmfit, xgrid))
+ # plots the data points, the support vectors, and shades the classification zones
+ ggplot(NULL) + geom_point(data = sv, aes(x = x1, y = x2), shape = 23, size = 2.5) +
+ geom_point(data = df, aes(x = x1, y = x2, color = correct), size = 1.5) +
+ geom_tile(data = grid, aes(x = x1, y = x2, fill = y), alpha = 0.2)
+}
+```
+
+Things to note after running the code section above:
+• scale = F means we are choosing not to scaling and center the data. The default is true, and
+we normally would not change that, because the SVM calculations are affected by the
+variable's scale. But in this example we have created data ourselves and we know x1 and
+x2 have similar scales
+• the accuracy is good, because the data is nearly separable
+• the default plot for the for the svm library looks a bit unappealing (in my opinion). A more
+elegant version can be created by experimenting with some parameters.
+To get a nicer plot we can tweak the settings:
+
+
+
+
+
+```{r}
+# Create and Plot the dataset to have an initial look:
+data1 = makeData1(split = 2)
+ggplot(data = data1, aes(x = x1, y = x2, color = y)) + geom_point()
+# Train a linear SVM classier, visualise the resulting classification:
+svm.model = svm(y ~ ., data = data1, kernel = "linear", cost = 10, scale = F)
+plot(svm.model, data1)
+# evaluate the model's prediction power
+pred = predict(svm.model, data1)
+confusionMatrix(pred, data1$y, mode = "everything")
+
+```
+
+
+```{r}
+plot(svm.model,data1, fill = T, svSymbol = 12, dataSymbol = 20,
+symbolPalette = rainbow(3), color.palette = cm.colors)
+```
+```{r}
+plotSVM(svm.model,data1)
+
+```
+In this plot:
+• The feature space is split (and coloured) into the two classification values either side of the
+separating hyperplane
+
+• Points with a diamond around them are the support vectors (support vectors are the data
+closest to the separating hyperplane)
+• Points in red are misclassified, points in blue are correctly classified
+
+```{r}
+data1 = makeData1(n=100, split = 2)
+svm.model = svm(y ~ ., data = data1,
+ kernel = "linear", cost = 10, scale = F)
+plotSVM(svm.model, data1)
+pred = predict(svm.model, data1)
+confusionMatrix(pred, data1$y, mode = "everything")
+```
+
+creating deferent parameters models you can try later 
+
+
+### Tuning the SVM model with the tune.svm function
+
+```{r}
+theData = makeData2(n = 100)
+ggplot(data = theData, aes(x = x1, y = x2, color = y)) + geom_point()
+svm.tune <- tune(svm, y~., data = theData,
+ ranges = list(
+ cost = c(0.01,0.1, 1, 10, 100, 1000),
+ kernel = c("linear", "polynomial", "radial")),
+ tunecontrol = tune.control(sampling = "cross", cross = 5)
+)
+
+```
+Evaluation code block 
+```{r}
+svm.tune$performances # lists all the settings tried and their performance
+plot(svm.tune$best.model, theData)
+plotSVM(svm.tune$best.model, theData)
+svm.tune$best.parameters
+svm.tune$best.performance
+## and evaluate
+pred = predict(svm.tune$best.model, theData)
+confusionMatrix(pred, theData$y)
+
+```
+```{r}
+svm.tune = tune(svm, y~., data = theData,
+ ranges = list(gamma = c(0.1, 0.5, 1, 2, 5),
+ cost = c(0.1, 1, 10, 100, 1000),
+kernel = c("radial")),
+ tunecontrol = tune.control(sampling = "cross", cross = 5)
+)
+
+```
+
+
+Evaluation code block 
+```{r}
+svm.tune$performances # lists all the settings tried and their performance
+plot(svm.tune$best.model, theData)
+plotSVM(svm.tune$best.model, theData)
+svm.tune$best.parameters
+svm.tune$best.performance
+## and evaluate
+pred = predict(svm.tune$best.model, theData)
+confusionMatrix(pred, theData$y)
+
+```
+```{r warning=FALSE}
+svm.tunepoly = tune(svm, y~., data = theData,
+ ranges = list(degree = c(2,3), ## for the polynomial power
+ gamma = c(0.1, 0.5, 1, 2, 5),
+cost = c(0.1, 1, 10, 100, 1000),
+kernel = c("polynomial")),
+ tunecontrol = tune.control(sampling = "cross", cross = 5)
+)
+
+#WARNIING WAS ABOUT  REACHING MAX ITERATIONS 
+
+```
+
+```{r}
+svm.tunepoly$performances # lists all the settings tried and their performance
+plot(svm.tunepoly$best.model, theData)
+plotSVM(svm.tunepoly$best.model, theData)
+svm.tunepoly$best.parameters
+svm.tunepoly$best.performance
+## and evaluate
+pred = predict(svm.tunepoly$best.model, theData)
+confusionMatrix(pred, theData$y)
+
+```
+
+
+Training an SVM model using caret
+```{r}
+### Set up a validation control for all the models we'll use
+ctrl = trainControl(method = "cv", number = 10)
+### Tune Linear SVM using caret
+theData = makeData3(n=50)
+### Create a grid of values for the tuneGrid parameter of the train function
+tune = expand.grid(list(C = c(0.01, 0.1, 1, 10, 100)))
+## tune = expand.grid(list(C = seq(0.01, 0.1, 0.01)))
+### train the model
+svm.fit = train(data = theData, y~., method = "svmLinear", trControl = ctrl,
+tuneGrid = tune)
+### Evaluate the results for different C values
+svm.fit$results
+### Evaluate model performance
+pred = predict(svm.fit, theData)
+confusionMatrix(pred, theData$y)
+### visualise the best model
+plot(svm.fit) # plots the variation in performance over the different C values
+svm.fit$bestTune
+varImp(svm.fit)
+plot(svm.fit$finalModel)
+plotSVM(svm.fit$finalModel, theData)
+```
+
+Note that these settings use a different library, the kernlab library ksvm functions, and hence
+plot(svm.fit$finalModel) generates a different type of plot showing with a contour display showing
+the underlying decision values used to classify the points. See ?plot.ksvm
+Similarly, to train a radial SVM model using caret:
+• Most of the code stays the same and can be re-used
+• Note the different name for the scaling parameter, since caret uses a different svm library
+
+Raidal model turnig 
+
+```{r}
+### Create a grid of values for the tuneGrid parameter of the train function
+tune = expand.grid(list(C = c(0.01, 0.1, 1, 10, 100), sigma = c(0.1,1,10)))
+## tune = expand.grid(list(C = seq(0.1, 1.5, 0.1), sigma = seq(0.2, 2.0, 0.2)))
+### train the model
+svm.fit = train(data = theData, y~., method = "svmRadial", trControl = ctrl,
+tuneGrid = tune)
+### then Evaluate and Visualise in same way as for the linear model
+
+```
+
+```{r}
+### Evaluate the results for different C values
+svm.fit$results
+### Evaluate model performance
+pred = predict(svm.fit, theData)
+confusionMatrix(pred, theData$y)
+### visualise the best model
+plot(svm.fit) # plots the variation in performance over the different C values
+svm.fit$bestTune
+varImp(svm.fit)
+plot(svm.fit$finalModel)
+plotSVM(svm.fit$finalModel, theData)
+```
+Polynomial  model turning 
+
+```{r}
+### Create a grid of values for the tuneGrid parameter of the train function
+tune = expand.grid(list(C = c(0.01, 0.1, 1, 10, 100),
+ scale = c(0.2, 0.5,1, 2, 5), degree = c(2,3)))
+### train the model
+svm.fit = train(data = theData, y~., method = "svmPoly", trControl = ctrl,
+tuneGrid = tune)
+### then Evaluate and Visualise in same way as for the linear model
+
+```
+
+
+```{r}
+### Evaluate the results for different C values
+svm.fit$results
+### Evaluate model performance
+pred = predict(svm.fit, theData)
+confusionMatrix(pred, theData$y)
+### visualise the best model
+plot(svm.fit) # plots the variation in performance over the different C values
+svm.fit$bestTune
+varImp(svm.fit)
+plot(svm.fit$finalModel)
+plotSVM(svm.fit$finalModel, theData)
+```
+Additional Exercises - Applying SVM to other datasets
+
+
+01 IRIS 
+
+```{r}
+ctrl = trainControl(method = "cv", number = 10)
+### Tune Linear SVM using caret
+tune = expand.grid(list(C = c(0.01, 0.1, 1, 10, 100, 1000)))
+svm.fit = train(data = iris, Species ~ ., method = "svmLinear",
+trControl = ctrl, tuneGrid = tune)
+svm.fit$results
+pred = predict(svm.fit, iris)
+confusionMatrix(pred, iris$Species)
+plot(svm.fit)
+svm.fit$bestTune
+varImp(svm.fit)
+
+```
+02 Diabetes 
+```{r}
+data(PimaIndiansDiabetes2, package="mlbench") 
+Diabetes <- PimaIndiansDiabetes2
+```
+
+```{r}
+Diabetes <- na.omit(Diabetes)
+```
+
+
+
+```{r}
+ctrl = trainControl(method = "cv", number = 10)
+### Tune Linear SVM using caret
+tune = expand.grid(list(C = c(0.01, 0.1, 1, 10, 100, 1000)))
+svm.fit = train(data = Diabetes, diabetes ~ ., method = "svmLinear",
+trControl = ctrl, tuneGrid = tune)
+svm.fit$results
+pred = predict(svm.fit, Diabetes)
+confusionMatrix(pred, Diabetes$diabetes)
+plot(svm.fit)
+svm.fit$bestTune
+varImp(svm.fit)
+
+```
+# accuray is an overall meaure 
+# recall and presion are important when misclassified negatives and positives are costly maybe medical field
+# Recall = T P T P + F N 
+# Precision = T P T P + F P
+
+
+House Price Dataset
+SVM models can do regression too.
+Use the dataset housePrice.csv from Lab 6 to train and test an SVM regression model
+This dataset includes a categorical target variable price which is a numerical value.
+Tune linear, radial and polynomial SVM models to find the best set of parameters for predicting price, and
+then determine the accuracy of the best model.
+Note that with more data, more variables and a numerical target, the SVM model takes a lot longer to
+run. So try fewer cross-validation folds and fewer values in the tuning grid.
+
+
+
+
+
+
+
+```{r}
+houses <- read.csv("https://www.dropbox.com/s/eja17oz3omb8r30/housePrice.csv?dl=1",stringsAsFactors = T, header=T)
+```
+
+
+```{r}
+str(houses)
+```
+```{r}
+houses <- na.omit(houses)
+```
+
+
+
+
+```{r}
+ctrl = trainControl(method = "cv", number = 10)
+### Tune Linear SVM using caret
+tune = expand.grid(list(C = c(0.01, 0.1, 1, 10, 100, 1000)))
+svm.fitreghouses = train(data = houses, price ~ ., method = "svmLinear",
+trControl = ctrl, tuneGrid = tune)
+svm.fitreghouses$results
+pred = predict(svm.fitreghouses, houses)
+
+
+
+```
+
+```{r}
+plot(svm.fitreghouses)
+svm.fitreghouses$bestTune
+varImp(svm.fitreghouses)
+
+```
+
+
+
+

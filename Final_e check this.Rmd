@@ -1,0 +1,266 @@
+---
+title: "Lab 03"
+author: "Chathura Perera"
+date: "10/02/2022"
+output: html_document
+---
+
+```{r}
+accidents <- read.csv("https://www.dropbox.com/s/t68um5t7ajjdwjl/2015_accidents.csv?dl=1",header=T, stringsAsFactors = T)
+
+```
+```{r}
+
+
+
+
+#the way i did it 
+accidents_copy<- read.csv("https://www.dropbox.com/s/t68um5t7ajjdwjl/2015_accidents.csv?dl=1",header=T, stringsAsFactors = T)
+```
+
+```{r}
+head(accidents)
+```
+
+```{r}
+head(accidents)
+```
+
+
+
+```{r}
+library(dplyr)
+library(caret)
+library(Hmisc)
+library(ggplot2)
+```
+
+
+```{r}
+#Removal of uneccassry 
+accidents$Year <- NULL
+accidents$Type.of.day <- NULL
+accidents$Neighbourhood.name<-NULL
+accidents$District.name<-NULL
+accidents$Street.name<-NULL
+head(accidents)
+```
+
+```{r}
+accidents$District.code <- as.factor(accidents$District.code)
+accidents$Neighbourhood.code <- as.factor(accidents$Neighbourhood.code)
+accidents$Streeet.code <- as.factor(accidents$Streeet.code)
+head(accidents,3)
+```
+
+```{r}
+str(accidents)
+```
+
+```{r}
+colnames(accidents)
+```
+
+
+```{r}
+accidents$Age[accidents$Age == "Unknown"] <- NA
+accidents$Age <- as.integer(as.character(accidents$Age))
+```
+
+
+```{r}
+accidents$Response.difference[accidents$Response.difference == " "] <- NA
+accidents$Response.difference[accidents$Response.difference == ">10"] <- NA
+accidents$Response.difference[accidents$Response.difference == "~0"] <- NA
+accidents$Response.difference[accidents$Response.difference == "nothing"] <- NA
+summary(accidents$Response.difference)
+```
+```{r}
+boxplot(accidents$Response.difference, col = "white")
+stripchart(accidents$Response.difference,method = "overplot", jitter = 0.1,pch = 19,col = 4,vertical = TRUE,add = TRUE)            
+#idea was to plot the points over the boxplot if you get it working let me know            
+           
+    
+```
+```{r}
+#injury description name correction 
+accidents$Injury.description[accidents$Injury.description == "minor injuery"] <-"minor injury" 
+```
+```{r}
+summary(accidents$Injury.description)
+```
+
+
+```{r}
+#Dropping levels and adding new levels
+levels(accidents$Injury.description) 
+```
+```{r}
+levels(accidents$Injury.description) <-droplevels(accidents$Injury.description)
+
+```
+
+```{r}
+#issue check here 
+levels(accidents$Injury.description) <-c(levels(accidents$Injury.description), "no injury")
+
+```
+
+
+```{r}
+levels(accidents$in)
+```
+```{r}
+cs <- preProcess(accidents, method = c("center","scale"))
+standardisedAcc <- predict(cs, accidents)
+
+```
+```{r}
+str(standardisedAcc)
+
+```
+
+```{r}
+str(accidents)
+```
+```{r}
+# proper way to make a copy 
+accident <- accidents_copy
+```
+
+
+
+```{r}
+ra <- preProcess(accidents, method = c("range"))
+normalisedAcc <- predict(ra, accidents)
+
+```
+
+```{r}
+str(normalisedAcc)
+```
+
+
+
+```{r}
+dummies <- dummyVars( ~ ., accidents)
+dummiesAccidents <- predict(dummies, accidents)
+
+```
+
+```{r}
+str(dummiesAccidents)
+typeof(dummiesAccidents)
+
+```
+
+In order to experiment with missing values, 
+we need to introduce some missing values in our dataset. 
+We introduce 20% missing values in column Response.difference 
+and 15% in column Injury.description.
+
+
+```{r}
+accidents[sample(1:nrow(accidents), 0.2*nrow(accidents)), "Response.difference"] <- NA
+accidents[sample(1:nrow(accidents), 0.15*nrow(accidents)), "Injury.description"] <- NA
+
+```
+
+
+```{r}
+accidentsWithNa <- accidents
+```
+
+```{r}
+apply(accidents, 2, function(x){return(sum(is.na(x)))})
+```
+
+```{r}
+apply(accidentsWithNa, 2, function(x){return(sum(is.na(x)))})
+```
+```{r}
+accidents <- accidents[complete.cases(accidents),]
+```
+
+```{r}
+accidents$Response.difference <- impute((accidents$Response.difference), mean)
+
+```
+```{r}
+accidents$Response.difference <- 
+impute((accidents$Response.difference), median)
+
+```
+
+```{r}
+accidents$Response.difference <- 
+impute((accidents$Response.difference), "random")
+
+```
+
+FOR CATEGORICAL VALUES REPLACE WITH MODE 
+
+
+```{r}
+accidents$Injury.description <- 
+impute((accidents$Injury.description), mode)
+
+```
+
+If NA is meaningful, you may wish to add it to the levels 
+of the categorical column with missing values. For example, 
+to add Naas a value for  the injury description column
+
+```{r}
+accidents$Injury.description <- addNA(accidents$Injury.description)
+```
+
+
+```{r}
+knnImp <- preProcess(accidents, method = c("knnImpute"))
+knnImputedAcc <- predict(knnImp, accidents)
+
+```
+
+
+```{r}
+bagImp <- preProcess(accidents, method = c("bagImpute"))
+bagimputedAcc <- predict(bagImp, accidents)
+
+```
+
+```{r}
+head(bagimputedAcc)
+```
+
+```{r}
+#filtering data 
+quickAmbulance <-filter(accidents,  Ambulance.response.time <10)
+
+```
+
+```{r}
+summary(quickAmbulance)
+```
+
+```{r}
+quickAmbulanceDeath <-filter(accidents, Ambulance.response.time <10, 
+Injury.description == "death")
+
+```
+
+```{r}
+#APPROXIIMATIONS WITH NEAR 
+around5minutes <- filter(accidents, 
+near(5.0, Ambulance.response.time, tol=1.2))
+
+```
+
+
+
+```{r}
+serious <-filter(accidents, (Injury.description == "serious injury" | Injury.description == "death")) &  (Ambulance.response.time > 30) )
+
+```
+
+

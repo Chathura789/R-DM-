@@ -1,0 +1,323 @@
+```{r}
+accidents<-read.csv("https://www.dropbox.com/s/n5afymm63p4uq47/2015_accidents.csv?dl=1",header=T, stringsAsFactors=T)
+consumption<-read.csv("https://www.dropbox.com/s/kf3tnzki29n11p2/consumptionDM.csv?dl=1",header=T,stringsAsFactors = T)
+```
+
+```{r}
+head(accidents)
+```
+
+```{r}
+head(consumption)
+```
+
+```{r}
+library(dplyr)
+library(stringr)
+```
+```{r}
+#lapply takes a list and a function name and applies the 
+#function to each element in the list. It returns the result in a list the same length as the input list.
+#For example to know the class (i.e.  data type) of each column in the accidents data frame
+
+lapply(accidents, class)
+```
+
+```{r}
+#same as above but simplfies the resul into a vertor 
+sapply(accidents, class)
+```
+
+```{r}
+rd_lengths <- sapply(accidents$Response.difference, str_length)
+
+
+```
+
+
+
+```{r}
+head(rd_lengths, 15)
+```
+```{r}
+typeof(str_length)
+```
+```{r}
+accidents$Day <- (str_to_lower(accidents$Day))
+```
+
+```{r}
+accidents$Vehicle.type <- str_to_upper(accidents$Vehicle.type)
+```
+```{r}
+head(accidents)
+```
+```{r}
+# function to turn all of the items in the dataset to lower 
+
+lowerAll <- function (dataset) {
+   for ( i in 1:ncol(dataset)) {
+       if (class(dataset[,i])=="factor")
+{dataset[,i] <- str_to_lower(dataset[,i])}
+   }
+   return(dataset)
+}
+
+```
+
+```{r}
+upperAll <- function(dataset) {
+  for (i in 1: ncol(dataset)) {
+    if (class (dataset[,i]) =="factor")
+{dataset[,i] <- str_to_upper(dataset[,i])}
+  }
+  return(dataset)
+}
+```
+
+```{r}
+upperAll(accidents)
+```
+
+
+```{r}
+
+non_alpha_num <- '[!\"#$%&\'()*+-,./:;<=>?@\\^_`{|}~\a\b\t\n\r\v\f]'
+
+non_num <- paste(c(letters, LETTERS, non_alpha_num), collapse="")
+
+num <- paste(c(0:9), collapse="")
+
+
+
+```
+```{r}
+Num.post.caption 
+```
+
+
+```{r}
+lowerAll(accidents)
+```
+
+```{r}
+head(accidents,5)
+```
+```{r}
+restrict_alpha_num <- gsub(".","", non_alpha_num, fixed=T)
+restrict_alpha_num <- gsub("-","", restrict_alpha_num, fixed=T)
+
+```
+
+
+
+```{r}
+#detecting bad characters 
+
+bad_chars <-  str_detect(accidents$Response.difference, 
+restrict_alpha_num)
+any(bad_chars, na.rm=T)
+sum(bad_chars)
+
+```
+```{r}
+bad_factors <- str_subset(accidents$Response.difference, 
+restrict_alpha_num)
+bad_factors
+
+```
+```{r}
+#2.	Obtain the list of Num.post.caption values which contain letters
+#A, B or X. Tip: include your letters between '[ and ]'
+```
+
+```{r}
+accidents$Response.difference <-str_remove_all(accidents$Response.difference,restrict_alpha_num)
+
+```
+```{r}
+str_length("abcdef-g")
+```
+
+```{r}
+grepl("f-", "abcdef-g")
+```
+
+```{r}
+p1 <- str_locate("abcdef-g", "-" )
+p1
+```
+
+
+```{r}
+p2 <- str_locate("abcdef-g", "$" )
+p2
+```
+
+```{r}
+p3 <- str_locate("abcdef-g", "  " )
+p3
+
+```
+
+```{r}
+substring("abcdef-g", 3,6)
+```
+
+```{r}
+levels(accidents$Age) <- c(levels(accidents$Age),"50-60","45-55", "30-40")
+
+```
+```{r}
+accidents$Age[1] <- "50-60"
+accidents$Age[5] <- "45-55"
+accidents$Age[10] <- "30-40"
+
+```
+
+
+
+
+
+```{r}
+findMean <- function (svalue){
+   if(grepl("-", svalue)){ # find the position of the minus (if any)
+      minus <- str_locate(svalue,"-")[1,1]
+      num1 = as.numeric(substr(svalue, 0,minus-1)) # get 1st number
+      num2 = as.numeric(substr(svalue,minus+1, nchar(svalue)))
+      return(mean(c(num1,num2)))
+   } else {return(as.numeric(svalue))} # no range specified
+}
+
+```
+
+
+```{r}
+accidents$Age <- sapply(as.character(accidents$Age),findMean)
+```
+
+
+
+
+
+
+```{r}
+ageYoung <- function (svalue){
+   if(grepl("y", svalue)){
+      y <- str_locate(svalue,"y")[1,1] 
+      num1 = as.numeric(substr(svalue, 0,y-1))
+      m <- str_locate(svalue,"m") 
+      num2 = as.numeric(substr(svalue,y+1,m-1))
+      return(num1 + num2/12)
+   } else {return(as.numeric(svalue))}
+}
+
+```
+
+
+```{r}
+ageYoung("3y4m")
+```
+
+```{r}
+levels(accidents$Age) <- c(levels(accidents$Age),"2y3m","1y10m", "0y8m")
+accidents$Age[100] <- "2y3m"
+accidents$Age[570] <- "1y10m"
+
+```
+
+```{r}
+accidents$Age[100] <- "2y3m"
+accidents$Age[570] <- "1y10m"
+accidents$Age[2000] <- "0y8m"
+
+```
+
+```{r}
+accidents$Age <- sapply(as.character(accidents$Age),ageYoung)
+
+accidents$Age
+```
+```{r}
+
+```
+3.	All report numbers start with 2015. Replace the report number values with the values obtained by removing 2015 from the beginning of the number.
+
+
+
+4.	Some Num.postal.caption values contain a blank space in the middle. Replace the blank space by a minus sign.
+
+
+
+
+
+5.	Column Cause…pedestrian contains a number of different values. Find out how many instances contain "pedestrian" in this column.
+
+
+
+
+
+6.	Obtain all the records where the Num.postal.caption contains zeros in positions 6,7 and 8.
+
+
+
+7.	Write a function which works with ages of the type "18m", i.e. where there is no year included, only months. Ensure you test your function.
+
+
+
+8.	Introduce the following values in the Police.response.time attribute in any row you want: "<20", "<13", "~10",  "~18", "10mins", "12 mins",  "10-12", "10-15". Write code to clean this attribute. 
+
+
+
+#Merging the new data 
+```{r}
+year <- c(2040,2045)
+Oil <- c(2599.1, 2489.2)
+Gas <- c(201.9, 193.4)
+Coal <- c(24.7, 20.6)
+Renewables <- c(125.8, 132.6)
+newdata <- data.frame(year, Oil, Gas, Coal, Renewables,stringsAsFactors = T)
+
+```
+
+```{r}
+colnames(consumption)
+```
+
+```{r}
+#renaming a variable in r dplyr way 
+
+consumption <- rename(consumption,  year = Million.tonnes.oil.equivalent)
+```
+
+
+
+```{r}
+head(consumption)
+```
+
+
+
+```{r}
+newConsumption <- rbind(consumption, newdata)
+```
+
+
+```{r}
+#Retain only the rows where there are matching records in both datasets, i.e. the year appears in both datasets.
+newConsumption2 <- merge(x = newConsumption, y = newdata,by.x = c("year"),by.y = c("year"),all.x = FALSE, all.y=FALSE)
+
+
+```
+
+
+
+```{r}
+#Keep the records in newConsumption which don’t have a match in windAndSun. To do this, we set all.x to TRUE
+newConsumption2 <- merge(x = newConsumption, y = newdata,by.x = c("year"),by.y=c("year"), all.x = TRUE, all.y=FALSE)
+
+```
+
+
+
+
